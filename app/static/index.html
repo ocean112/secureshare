@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>SecureShare</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet"/>
+<style>
+  :root[data-theme="dark"] {
+    --bg:#0a0a0f;--bg2:#111118;--bg3:#18181f;
+    --border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.13);
+    --accent:#7c6af7;--accent2:#a99ff8;
+    --success:#34d399;--danger:#f87171;--warning:#fbbf24;
+    --text:#f0effe;--muted:#8884a8;--muted2:#5a5875;
+    --card-bg:#111118;--input-bg:#18181f;
+    --preview-bg:#0d0d14;
+  }
+  :root[data-theme="light"] {
+    --bg:#f4f3ff;--bg2:#ffffff;--bg3:#ededf8;
+    --border:rgba(0,0,0,0.08);--border2:rgba(0,0,0,0.15);
+    --accent:#7c6af7;--accent2:#5a48e0;
+    --success:#059669;--danger:#dc2626;--warning:#d97706;
+    --text:#1a1830;--muted:#6b6890;--muted2:#9896b8;
+    --card-bg:#ffffff;--input-bg:#f4f3ff;
+    --preview-bg:#f0effe;
+  }
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'Syne',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden;transition:background .3s,color .3s;}
+  body::before{content:'';position:fixed;inset:0;z-index:0;background-image:linear-gradient(rgba(124,106,247,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(124,106,247,0.03) 1px,transparent 1px);background-size:40px 40px;pointer-events:none;}
+  .orb{position:fixed;border-radius:50%;filter:blur(80px);pointer-events:none;z-index:0;}
+  .orb-1{width:400px;height:400px;top:-100px;right:-100px;background:rgba(124,106,247,0.1);}
+  .orb-2{width:300px;height:300px;bottom:-80px;left:-60px;background:rgba(52,211,153,0.05);}
+  #app{position:relative;z-index:1;min-height:100vh;}
+
+  /* ── Auth ── */
+  .auth-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:2rem;}
+  .auth-card{width:100%;max-width:420px;background:var(--card-bg);border:1px solid var(--border2);border-radius:20px;padding:2.5rem;animation:slideUp .4s ease both;}
+  @keyframes slideUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+  .auth-logo{display:flex;align-items:center;gap:10px;margin-bottom:2rem;}
+  .auth-logo-icon{width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,var(--accent),#b4a9ff);display:flex;align-items:center;justify-content:center;font-size:18px;}
+  .auth-logo-text{font-size:20px;font-weight:800;letter-spacing:-.02em;}
+  .auth-title{font-size:26px;font-weight:800;letter-spacing:-.03em;margin-bottom:6px;}
+  .auth-sub{font-size:13px;color:var(--muted);margin-bottom:2rem;line-height:1.5;}
+  .form-group{margin-bottom:14px;}
+  .form-label{font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:6px;display:block;}
+  input[type=email],input[type=password],input[type=text]{width:100%;padding:11px 14px;background:var(--input-bg);border:1px solid var(--border);border-radius:10px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:13px;outline:none;transition:border-color .2s,box-shadow .2s;}
+  input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(124,106,247,.15);}
+  .btn{width:100%;padding:12px;border:none;border-radius:10px;font-family:'Syne',sans-serif;font-size:14px;font-weight:700;cursor:pointer;transition:all .2s;}
+  .btn-primary{background:var(--accent);color:#fff;}
+  .btn-primary:hover{background:#6b5ae6;transform:translateY(-1px);box-shadow:0 8px 24px rgba(124,106,247,.3);}
+  .btn-primary:active{transform:none;}
+  .btn-primary:disabled{opacity:.5;cursor:not-allowed;transform:none;}
+  .auth-switch{text-align:center;margin-top:1.5rem;font-size:13px;color:var(--muted);}
+  .auth-switch a{color:var(--accent);text-decoration:none;cursor:pointer;font-weight:600;}
+  .alert{padding:10px 14px;border-radius:8px;font-size:13px;margin-bottom:14px;display:none;font-family:'JetBrains Mono',monospace;}
+  .alert-err{background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.3);color:var(--danger);}
+  .alert-ok{background:rgba(52,211,153,.1);border:1px solid rgba(52,211,153,.3);color:var(--success);}
+
+  /* ── Dashboard ── */
+  .dash{display:none;flex-direction:column;min-height:100vh;}
+  .dash.visible{display:flex;}
+  .topbar{display:flex;align-items:center;justify-content:space-between;padding:0 2rem;height:64px;background:rgba(var(--bg2-raw,17,17,24),.85);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100;}
+  .topbar-logo{display:flex;align-items:center;gap:10px;font-size:18px;font-weight:800;letter-spacing:-.02em;}
+  .topbar-logo-icon{width:30px;height:30px;border-radius:8px;background:linear-gradient(135deg,var(--accent),#b4a9ff);display:flex;align-items:center;justify-content:center;font-size:15px;}
+  .topbar-right{display:flex;align-items:center;gap:10px;}
+  .theme-toggle{width:36px;height:36px;border-radius:8px;background:transparent;border:1px solid var(--border2);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;transition:all .2s;}
+  .theme-toggle:hover{background:var(--bg3);}
+  .user-pill{display:flex;align-items:center;gap:8px;background:var(--bg3);border:1px solid var(--border);border-radius:99px;padding:5px 14px 5px 8px;font-size:13px;color:var(--muted);}
+  .user-avatar{width:24px;height:24px;border-radius:50%;background:linear-gradient(135deg,var(--accent),#b4a9ff);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;}
+  .btn-logout{padding:7px 16px;border-radius:8px;background:transparent;border:1px solid var(--border2);color:var(--muted);font-family:'Syne',sans-serif;font-size:13px;cursor:pointer;transition:all .2s;}
+  .btn-logout:hover{border-color:var(--danger);color:var(--danger);}
+  .dash-main{flex:1;padding:2.5rem 2rem;max-width:960px;margin:0 auto;width:100%;}
+
+  /* Stats */
+  .stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin-bottom:2rem;}
+  .stat-card{background:var(--card-bg);border:1px solid var(--border);border-radius:14px;padding:1.25rem 1.5rem;transition:border-color .2s;}
+  .stat-card:hover{border-color:var(--border2);}
+  .stat-label{font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;}
+  .stat-value{font-size:28px;font-weight:800;letter-spacing:-.03em;}
+  .stat-sub{font-size:12px;color:var(--muted);margin-top:2px;font-family:'JetBrains Mono',monospace;}
+
+  /* Token bar */
+  .token-bar{background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:10px 14px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);margin-bottom:2rem;display:flex;align-items:center;gap:10px;overflow:hidden;}
+  .token-label{font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--success);white-space:nowrap;background:rgba(52,211,153,.1);border:1px solid rgba(52,211,153,.2);border-radius:5px;padding:2px 7px;}
+  .token-val{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;}
+
+  /* Upload */
+  .upload-zone{border:2px dashed var(--border2);border-radius:16px;padding:3rem 2rem;text-align:center;cursor:pointer;transition:all .2s;margin-bottom:2rem;background:var(--card-bg);position:relative;overflow:hidden;}
+  .upload-zone:hover,.upload-zone.drag-over{border-color:var(--accent);background:rgba(124,106,247,.05);}
+  .upload-zone input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;}
+  .upload-icon{font-size:36px;margin-bottom:12px;}
+  .upload-title{font-size:16px;font-weight:700;margin-bottom:6px;}
+  .upload-sub{font-size:13px;color:var(--muted);}
+  .upload-progress{margin-top:14px;height:3px;background:var(--border);border-radius:99px;overflow:hidden;display:none;}
+  .upload-bar{height:100%;background:var(--accent);width:0%;transition:width .4s;border-radius:99px;}
+
+  /* Search */
+  .search-bar{display:flex;gap:10px;margin-bottom:1rem;align-items:center;}
+  .search-input{flex:1;padding:10px 14px;background:var(--input-bg);border:1px solid var(--border);border-radius:10px;color:var(--text);font-family:'Syne',sans-serif;font-size:13px;outline:none;transition:border-color .2s;}
+  .search-input:focus{border-color:var(--accent);}
+  .filter-select{padding:10px 14px;background:var(--input-bg);border:1px solid var(--border);border-radius:10px;color:var(--text);font-family:'Syne',sans-serif;font-size:13px;outline:none;cursor:pointer;}
+
+  /* File list */
+  .section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;}
+  .section-title{font-size:16px;font-weight:700;}
+  .btn-refresh{padding:6px 14px;border-radius:8px;background:transparent;border:1px solid var(--border2);color:var(--muted);font-family:'Syne',sans-serif;font-size:12px;cursor:pointer;transition:all .2s;}
+  .btn-refresh:hover{border-color:var(--accent);color:var(--accent2);}
+  .files-table{background:var(--card-bg);border:1px solid var(--border);border-radius:16px;overflow:hidden;}
+  .file-row{display:grid;grid-template-columns:2.5rem 1fr auto auto;align-items:center;gap:1rem;padding:.9rem 1.25rem;border-bottom:1px solid var(--border);transition:background .15s;animation:fadeIn .3s ease both;}
+  @keyframes fadeIn{from{opacity:0;transform:translateX(-6px)}to{opacity:1}}
+  .file-row:last-child{border-bottom:none;}
+  .file-row:hover{background:rgba(124,106,247,.03);}
+  .file-icon{width:36px;height:36px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:17px;}
+  .file-name{font-size:14px;font-weight:600;margin-bottom:2px;}
+  .file-meta{font-size:11px;color:var(--muted);font-family:'JetBrains Mono',monospace;display:flex;align-items:center;gap:8px;}
+  .badge-id{font-family:'JetBrains Mono',monospace;font-size:10px;background:rgba(124,106,247,.12);border:1px solid rgba(124,106,247,.2);color:var(--accent2);border-radius:5px;padding:2px 6px;}
+  .badge-size{font-size:10px;background:var(--bg3);border:1px solid var(--border);color:var(--muted);border-radius:5px;padding:2px 6px;}
+  .badge-enc{font-size:10px;background:rgba(52,211,153,.1);border:1px solid rgba(52,211,153,.2);color:var(--success);border-radius:5px;padding:2px 6px;}
+  .file-actions{display:flex;gap:5px;align-items:center;}
+  .btn-action{padding:5px 11px;border-radius:7px;font-family:'Syne',sans-serif;font-size:11px;font-weight:600;cursor:pointer;transition:all .2s;border:1px solid transparent;}
+  .btn-dl{background:rgba(124,106,247,.12);border-color:rgba(124,106,247,.3);color:var(--accent2);}
+  .btn-dl:hover{background:rgba(124,106,247,.22);}
+  .btn-preview{background:rgba(251,191,36,.1);border-color:rgba(251,191,36,.3);color:var(--warning);}
+  .btn-preview:hover{background:rgba(251,191,36,.2);}
+  .btn-share{background:rgba(52,211,153,.1);border-color:rgba(52,211,153,.3);color:var(--success);}
+  .btn-share:hover{background:rgba(52,211,153,.2);}
+  .btn-del{background:transparent;border-color:var(--border);color:var(--muted);padding:5px 8px;}
+  .btn-del:hover{border-color:var(--danger);color:var(--danger);background:rgba(248,113,113,.08);}
+  .empty-state{padding:3rem;text-align:center;color:var(--muted);}
+  .empty-state-icon{font-size:32px;margin-bottom:12px;}
+
+  /* ── Preview modal ── */
+  .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:1000;display:none;align-items:center;justify-content:center;backdrop-filter:blur(4px);}
+  .modal-overlay.open{display:flex;}
+  .modal{background:var(--card-bg);border:1px solid var(--border2);border-radius:20px;width:90%;max-width:800px;max-height:90vh;overflow:hidden;display:flex;flex-direction:column;animation:slideUp .3s ease both;}
+  .modal-header{display:flex;align-items:center;justify-content:space-between;padding:1.25rem 1.5rem;border-bottom:1px solid var(--border);}
+  .modal-title{font-size:15px;font-weight:700;}
+  .modal-close{width:32px;height:32px;border-radius:8px;background:transparent;border:1px solid var(--border2);cursor:pointer;font-size:16px;color:var(--muted);display:flex;align-items:center;justify-content:center;}
+  .modal-close:hover{border-color:var(--danger);color:var(--danger);}
+  .modal-body{flex:1;overflow:auto;padding:1.5rem;display:flex;align-items:center;justify-content:center;background:var(--preview-bg);}
+  .modal-body img{max-width:100%;max-height:60vh;border-radius:8px;}
+  .modal-body iframe{width:100%;height:60vh;border:none;border-radius:8px;}
+  .modal-body .no-preview{text-align:center;color:var(--muted);}
+  .modal-body .no-preview .icon{font-size:48px;margin-bottom:1rem;}
+
+  /* ── Share modal ── */
+  .share-url-box{background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:12px 14px;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--accent2);word-break:break-all;margin-bottom:12px;cursor:pointer;}
+  .share-url-box:hover{border-color:var(--accent);}
+  .share-actions{display:flex;gap:8px;}
+  .btn-copy{flex:1;padding:10px;border-radius:8px;background:rgba(124,106,247,.12);border:1px solid rgba(124,106,247,.3);color:var(--accent2);font-family:'Syne',sans-serif;font-size:13px;font-weight:600;cursor:pointer;}
+  .btn-copy:hover{background:rgba(124,106,247,.22);}
+  .btn-revoke{flex:1;padding:10px;border-radius:8px;background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.3);color:var(--danger);font-family:'Syne',sans-serif;font-size:13px;font-weight:600;cursor:pointer;}
+  .btn-revoke:hover{background:rgba(248,113,113,.2);}
+
+  /* Forgot password screen */
+  .forgot-link{text-align:right;margin-top:-8px;margin-bottom:14px;}
+  .forgot-link a{font-size:12px;color:var(--accent);cursor:pointer;}
+
+  /* Toast */
+  .toast-wrap{position:fixed;bottom:2rem;right:2rem;z-index:999;display:flex;flex-direction:column;gap:8px;}
+  .toast{padding:12px 18px;border-radius:10px;font-size:13px;font-weight:600;animation:slideUp .3s ease both;display:flex;align-items:center;gap:8px;box-shadow:0 8px 32px rgba(0,0,0,.4);max-width:320px;}
+  .toast-success{background:rgba(52,211,153,.15);border:1px solid rgba(52,211,153,.35);color:var(--success);}
+  .toast-error{background:rgba(248,113,113,.15);border:1px solid rgba(248,113,113,.35);color:var(--danger);}
+  .spinner{width:18px;height:18px;border:2px solid rgba(255,255,255,.2);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;display:inline-block;}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  @media(max-width:600px){.stats-row{grid-template-columns:1fr;}.file-row{grid-template-columns:2.5rem 1fr auto;}.dash-main{padding:1.5rem 1rem;}.topbar{padding:0 1rem;}}
+</style>
+</head>
+<body>
+<div class="orb orb-1"></div>
+<div class="orb orb-2"></div>
+<div id="app">
+
+<!-- ── AUTH ── -->
+<div id="auth-wrap" class="auth-wrap">
+  <div class="auth-card">
+    <div class="auth-logo">
+      <div class="auth-logo-icon">🔒</div>
+      <span class="auth-logo-text">SecureShare</span>
+      <button onclick="toggleTheme()" style="margin-left:auto;background:transparent;border:1px solid var(--border2);border-radius:8px;width:32px;height:32px;cursor:pointer;font-size:15px;" id="auth-theme-btn">🌙</button>
+    </div>
+
+    <!-- Login -->
+    <div id="form-login">
+      <div class="auth-title">Welcome back</div>
+      <div class="auth-sub">Sign in to your secure vault.</div>
+      <div class="alert alert-err" id="login-err"></div>
+      <div class="form-group"><label class="form-label">Email</label><input type="email" id="login-email" placeholder="you@example.com"/></div>
+      <div class="form-group"><label class="form-label">Password</label><input type="password" id="login-password" placeholder="••••••••"/></div>
+      <div class="forgot-link"><a onclick="showForgot()">Forgot password?</a></div>
+      <button class="btn btn-primary" id="login-btn" onclick="doLogin()">Sign in</button>
+      <div class="auth-switch">No account? <a onclick="showRegister()">Create one</a></div>
+    </div>
+
+    <!-- Register -->
+    <div id="form-register" style="display:none">
+      <div class="auth-title">Create account</div>
+      <div class="auth-sub">Secure file sharing, just for you.</div>
+      <div class="alert alert-err" id="reg-err"></div>
+      <div class="alert alert-ok" id="reg-ok"></div>
+      <div class="form-group"><label class="form-label">Email</label><input type="email" id="reg-email" placeholder="you@example.com"/></div>
+      <div class="form-group"><label class="form-label">Password</label><input type="password" id="reg-password" placeholder="Choose a strong password"/></div>
+      <button class="btn btn-primary" id="reg-btn" onclick="doRegister()">Create account</button>
+      <div class="auth-switch">Already have one? <a onclick="showLogin()">Sign in</a></div>
+    </div>
+
+    <!-- Forgot password -->
+    <div id="form-forgot" style="display:none">
+      <div class="auth-title">Reset password</div>
+      <div class="auth-sub">Enter your email and we'll send a reset link.</div>
+      <div class="alert alert-err" id="forgot-err"></div>
+      <div class="alert alert-ok" id="forgot-ok"></div>
+      <div class="form-group"><label class="form-label">Email</label><input type="email" id="forgot-email" placeholder="you@example.com"/></div>
+      <button class="btn btn-primary" id="forgot-btn" onclick="doForgot()">Send reset link</button>
+      <div class="auth-switch"><a onclick="showLogin()">← Back to login</a></div>
+    </div>
+
+    <!-- Reset password -->
+    <div id="form-reset" style="display:none">
+      <div class="auth-title">New password</div>
+      <div class="auth-sub">Choose a strong new password.</div>
+      <div class="alert alert-err" id="reset-err"></div>
+      <div class="alert alert-ok" id="reset-ok"></div>
+      <div class="form-group"><label class="form-label">New Password</label><input type="password" id="reset-password" placeholder="New password"/></div>
+      <button class="btn btn-primary" id="reset-btn" onclick="doReset()">Set new password</button>
+      <div class="auth-switch"><a onclick="showLogin()">← Back to login</a></div>
+    </div>
+  </div>
+</div>
+
+<!-- ── DASHBOARD ── -->
+<div id="dashboard" class="dash">
+  <nav class="topbar">
+    <div class="topbar-logo"><div class="topbar-logo-icon">🔒</div>SecureShare</div>
+    <div class="topbar-right">
+      <button class="theme-toggle" onclick="toggleTheme()" id="dash-theme-btn">🌙</button>
+      <div class="user-pill"><div class="user-avatar" id="user-avatar">?</div><span id="user-email-label">user</span></div>
+      <button class="btn-logout" onclick="doLogout()">Sign out</button>
+    </div>
+  </nav>
+
+  <main class="dash-main">
+    <div class="token-bar">
+      <span class="token-label">JWT</span>
+      <span class="token-val" id="token-display">—</span>
+    </div>
+
+    <div class="stats-row">
+      <div class="stat-card"><div class="stat-label">Total files</div><div class="stat-value" id="stat-count">0</div><div class="stat-sub">in your vault</div></div>
+      <div class="stat-card"><div class="stat-label">Total size</div><div class="stat-value" id="stat-size" style="font-size:20px;padding-top:4px">0 B</div><div class="stat-sub">encrypted on disk</div></div>
+      <div class="stat-card"><div class="stat-label">Encryption</div><div class="stat-value" style="font-size:16px;padding-top:6px">AES-256</div><div class="stat-sub">all files encrypted</div></div>
+    </div>
+
+    <div class="upload-zone" id="upload-zone">
+      <input type="file" id="file-input" onchange="handleFileSelect(this)"/>
+      <div class="upload-icon">📤</div>
+      <div class="upload-title">Drop a file here or click to browse</div>
+      <div class="upload-sub">Any file type · AES-256 encrypted before storage</div>
+      <div class="upload-progress" id="upload-progress"><div class="upload-bar" id="upload-bar"></div></div>
+    </div>
+
+    <div class="search-bar">
+      <input class="search-input" type="text" id="search-input" placeholder="🔍  Search files…" oninput="handleSearch(this.value)"/>
+      <select class="filter-select" id="filter-select" onchange="handleSearch(document.getElementById('search-input').value)">
+        <option value="">All types</option>
+        <option value="pdf">PDF</option>
+        <option value="png,jpg,jpeg,gif,webp">Images</option>
+        <option value="txt,md">Text</option>
+        <option value="zip,rar">Archives</option>
+        <option value="py,js,ts,html,css">Code</option>
+      </select>
+    </div>
+
+    <div class="section-header">
+      <div class="section-title">Your files</div>
+      <button class="btn-refresh" onclick="loadFiles()">↻ Refresh</button>
+    </div>
+    <div class="files-table" id="files-table">
+      <div class="empty-state"><div class="empty-state-icon">🗂️</div><div>No files yet. Upload something above.</div></div>
+    </div>
+  </main>
+</div>
+
+<!-- ── Preview Modal ── -->
+<div class="modal-overlay" id="preview-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="preview-title">Preview</div>
+      <button class="modal-close" onclick="closePreview()">✕</button>
+    </div>
+    <div class="modal-body" id="preview-body"></div>
+  </div>
+</div>
+
+<!-- ── Share Modal ── -->
+<div class="modal-overlay" id="share-modal">
+  <div class="modal" style="max-width:480px">
+    <div class="modal-header">
+      <div class="modal-title">Share file</div>
+      <button class="modal-close" onclick="closeShare()">✕</button>
+    </div>
+    <div class="modal-body" style="padding:1.5rem;display:block;background:var(--card-bg)">
+      <p style="font-size:13px;color:var(--muted);margin-bottom:12px">Anyone with this link can download the file — no login required.</p>
+      <div class="share-url-box" id="share-url-display" onclick="copyShareUrl()">—</div>
+      <div class="share-actions">
+        <button class="btn-copy" onclick="copyShareUrl()">📋 Copy link</button>
+        <button class="btn-revoke" onclick="revokeShare()">✕ Revoke</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast-wrap" id="toast-wrap"></div>
+</div>
+
+<script>
+const API = '';
+let token = localStorage.getItem('ss_token') || null;
+let currentUser = localStorage.getItem('ss_email') || null;
+let allFiles = [];
+let currentShareFileId = null;
+let searchTimer = null;
+
+// ── Theme ──────────────────────────────────────
+function toggleTheme() {
+  const html = document.documentElement;
+  const isDark = html.getAttribute('data-theme') === 'dark';
+  html.setAttribute('data-theme', isDark ? 'light' : 'dark');
+  localStorage.setItem('ss_theme', isDark ? 'light' : 'dark');
+  document.getElementById('auth-theme-btn').textContent = isDark ? '☀️' : '🌙';
+  document.getElementById('dash-theme-btn').textContent = isDark ? '☀️' : '🌙';
+}
+
+// ── Init ──────────────────────────────────────
+window.onload = () => {
+  const theme = localStorage.getItem('ss_theme') || 'dark';
+  document.documentElement.setAttribute('data-theme', theme);
+  document.getElementById('auth-theme-btn').textContent = theme === 'dark' ? '🌙' : '☀️';
+  document.getElementById('dash-theme-btn').textContent = theme === 'dark' ? '🌙' : '☀️';
+
+  // Check for reset token in URL
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('token') && window.location.pathname === '/reset-password') {
+    showReset(params.get('token'));
+  }
+  if (params.get('token') && window.location.pathname === '/verify-email') {
+    verifyEmail(params.get('token'));
+  }
+
+  if (token) { showDashboard(); loadFiles(); }
+
+  const zone = document.getElementById('upload-zone');
+  zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag-over'); });
+  zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+  zone.addEventListener('drop', e => { e.preventDefault(); zone.classList.remove('drag-over'); if(e.dataTransfer.files[0]) uploadFile(e.dataTransfer.files[0]); });
+  document.getElementById('login-password').addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
+  document.getElementById('reg-password').addEventListener('keydown', e => { if(e.key==='Enter') doRegister(); });
+  document.getElementById('preview-modal').addEventListener('click', e => { if(e.target.id==='preview-modal') closePreview(); });
+  document.getElementById('share-modal').addEventListener('click', e => { if(e.target.id==='share-modal') closeShare(); });
+};
+
+// ── Auth helpers ──────────────────────────────
+function hideAll() { ['form-login','form-register','form-forgot','form-reset'].forEach(id => document.getElementById(id).style.display='none'); clearAlerts(); }
+function showLogin()    { hideAll(); document.getElementById('form-login').style.display='block'; }
+function showRegister() { hideAll(); document.getElementById('form-register').style.display='block'; }
+function showForgot()   { hideAll(); document.getElementById('form-forgot').style.display='block'; }
+function showReset(t)   { hideAll(); document.getElementById('form-reset').style.display='block'; window._resetToken = t; }
+function clearAlerts()  { document.querySelectorAll('.alert').forEach(el => { el.style.display='none'; el.textContent=''; }); }
+function showAlert(id, msg) { const el=document.getElementById(id); el.textContent=msg; el.style.display='block'; }
+function setLoading(id, on, label='') { const b=document.getElementById(id); b.disabled=on; b.innerHTML=on?'<span class="spinner"></span>':label; }
+
+async function doRegister() {
+  clearAlerts();
+  const email=document.getElementById('reg-email').value.trim(), pw=document.getElementById('reg-password').value;
+  if(!email||!pw) { showAlert('reg-err','Please fill in all fields.'); return; }
+  setLoading('reg-btn',true);
+  try {
+    const res = await fetch(`${API}/register`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,password:pw})});
+    const data = await res.json();
+    if(!res.ok) { showAlert('reg-err', data.detail||'Registration failed.'); return; }
+    showAlert('reg-ok','✓ Account created! Check your email to verify, then sign in.');
+    setTimeout(() => showLogin(), 2000);
+  } catch(e) { showAlert('reg-err','Could not reach server. Is it running?'); }
+  finally { setLoading('reg-btn',false,'Create account'); }
+}
+
+async function doLogin() {
+  clearAlerts();
+  const email=document.getElementById('login-email').value.trim(), pw=document.getElementById('login-password').value;
+  if(!email||!pw) { showAlert('login-err','Please fill in all fields.'); return; }
+  setLoading('login-btn',true);
+  try {
+    const res = await fetch(`${API}/login`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,password:pw})});
+    const data = await res.json();
+    if(!res.ok) { showAlert('login-err', data.detail||'Invalid credentials.'); return; }
+    token=data.access_token; currentUser=email;
+    localStorage.setItem('ss_token',token); localStorage.setItem('ss_email',email);
+    showDashboard(); loadFiles();
+  } catch(e) { showAlert('login-err','Could not reach server. Is it running?'); }
+  finally { setLoading('login-btn',false,'Sign in'); }
+}
+
+async function doForgot() {
+  clearAlerts();
+  const email=document.getElementById('forgot-email').value.trim();
+  if(!email) { showAlert('forgot-err','Please enter your email.'); return; }
+  setLoading('forgot-btn',true);
+  try {
+    const res = await fetch(`${API}/forgot-password`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email})});
+    const data = await res.json();
+    showAlert('forgot-ok', data.message||'If that email exists, a reset link has been sent.');
+  } catch(e) { showAlert('forgot-err','Could not reach server.'); }
+  finally { setLoading('forgot-btn',false,'Send reset link'); }
+}
+
+async function doReset() {
+  clearAlerts();
+  const pw=document.getElementById('reset-password').value;
+  if(!pw) { showAlert('reset-err','Please enter a new password.'); return; }
+  setLoading('reset-btn',true);
+  try {
+    const res = await fetch(`${API}/reset-password`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:window._resetToken,new_password:pw})});
+    const data = await res.json();
+    if(!res.ok) { showAlert('reset-err', data.detail||'Reset failed.'); return; }
+    showAlert('reset-ok','✓ Password reset! You can now log in.');
+    setTimeout(() => showLogin(), 2000);
+  } catch(e) { showAlert('reset-err','Could not reach server.'); }
+  finally { setLoading('reset-btn',false,'Set new password'); }
+}
+
+async function verifyEmail(t) {
+  try {
+    const res = await fetch(`${API}/verify-email?token=${t}`);
+    const data = await res.json();
+    showLogin();
+    showAlert('login-err', ''); 
+    setTimeout(() => showAlert('login-err', ''), 0);
+    toast(data.message||'Email verified!', 'success');
+  } catch(e) {}
+}
+
+function doLogout() {
+  token=null; currentUser=null;
+  localStorage.removeItem('ss_token'); localStorage.removeItem('ss_email');
+  document.getElementById('dashboard').classList.remove('visible');
+  document.getElementById('auth-wrap').style.display='flex';
+  showLogin();
+}
+
+function showDashboard() {
+  document.getElementById('auth-wrap').style.display='none';
+  document.getElementById('dashboard').classList.add('visible');
+  document.getElementById('token-display').textContent = token ? token.slice(0,60)+'…' : '—';
+  if(currentUser) { document.getElementById('user-email-label').textContent=currentUser; document.getElementById('user-avatar').textContent=currentUser[0].toUpperCase(); }
+}
+
+// ── Upload ────────────────────────────────────
+function handleFileSelect(input) { if(input.files[0]) uploadFile(input.files[0]); }
+
+async function uploadFile(file) {
+  const zone=document.getElementById('upload-zone'), prog=document.getElementById('upload-progress'), bar=document.getElementById('upload-bar');
+  zone.querySelector('.upload-title').textContent=`Uploading ${file.name}…`;
+  prog.style.display='block';
+  let pct=0;
+  const ticker=setInterval(()=>{ pct=Math.min(pct+Math.random()*15,90); bar.style.width=pct+'%'; },120);
+  const fd=new FormData(); fd.append('file',file);
+  try {
+    const res=await fetch(`${API}/upload`,{method:'POST',headers:{'Authorization':`Bearer ${token}`},body:fd});
+    clearInterval(ticker); bar.style.width='100%';
+    if(res.ok) { toast(`✓ ${file.name} uploaded & encrypted`,'success'); setTimeout(()=>{loadFiles();resetUploadZone();},500); }
+    else { const d=await res.json(); toast(d.detail||'Upload failed','error'); resetUploadZone(); }
+  } catch(e) { clearInterval(ticker); toast('Upload failed — server unreachable','error'); resetUploadZone(); }
+}
+
+function resetUploadZone() {
+  document.getElementById('upload-zone').querySelector('.upload-title').textContent='Drop a file here or click to browse';
+  document.getElementById('upload-progress').style.display='none';
+  document.getElementById('upload-bar').style.width='0%';
+  document.getElementById('file-input').value='';
+}
+
+// ── File list ─────────────────────────────────
+const EXT_ICON={'pdf':'📄','png':'🖼️','jpg':'🖼️','jpeg':'🖼️','gif':'🖼️','webp':'🖼️','mp4':'🎬','mp3':'🎵','zip':'🗜️','rar':'🗜️','txt':'📝','md':'📝','csv':'📊','xlsx':'📊','docx':'📝','pptx':'📊','py':'🐍','js':'⚡','ts':'⚡','html':'🌐','css':'🎨','json':'📋'};
+const EXT_COLOR={'pdf':'rgba(248,113,113,.12)','png':'rgba(52,211,153,.12)','jpg':'rgba(52,211,153,.12)','jpeg':'rgba(52,211,153,.12)','gif':'rgba(52,211,153,.12)','webp':'rgba(52,211,153,.12)','mp4':'rgba(251,191,36,.12)','mp3':'rgba(167,139,250,.12)','py':'rgba(52,211,153,.12)','js':'rgba(251,191,36,.12)','ts':'rgba(56,189,248,.12)'};
+const PREVIEWABLE=['png','jpg','jpeg','gif','webp','pdf','txt','md'];
+
+function iconFor(n){const e=n.split('.').pop().toLowerCase();return EXT_ICON[e]||'📁';}
+function colorFor(n){const e=n.split('.').pop().toLowerCase();return EXT_COLOR[e]||'rgba(124,106,247,.12)';}
+function canPreview(n){return PREVIEWABLE.includes(n.split('.').pop().toLowerCase());}
+function formatSize(b){if(b<1024)return b+' B';if(b<1048576)return (b/1024).toFixed(1)+' KB';return (b/1048576).toFixed(1)+' MB';}
+function escHtml(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
+
+async function loadFiles() {
+  try {
+    const res=await fetch(`${API}/files`,{headers:{'Authorization':`Bearer ${token}`}});
+    if(res.status===401){doLogout();return;}
+    allFiles=await res.json();
+    renderFiles(allFiles);
+    updateStats(allFiles);
+  } catch(e) {}
+}
+
+function handleSearch(val) {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(() => {
+    const ext = document.getElementById('filter-select').value;
+    let filtered = allFiles.filter(f => f.filename.toLowerCase().includes(val.toLowerCase()));
+    if(ext) { const exts=ext.split(','); filtered=filtered.filter(f=>exts.some(e=>f.filename.toLowerCase().endsWith('.'+e))); }
+    renderFiles(filtered);
+  }, 200);
+}
+
+function updateStats(files) {
+  document.getElementById('stat-count').textContent=files.length;
+  const total=files.reduce((s,f)=>s+(f.file_size||0),0);
+  document.getElementById('stat-size').textContent=formatSize(total);
+}
+
+function renderFiles(files) {
+  const table=document.getElementById('files-table');
+  if(!files.length) { table.innerHTML=`<div class="empty-state"><div class="empty-state-icon">🗂️</div><div>No files found.</div></div>`; return; }
+  table.innerHTML=files.map((f,i)=>`
+    <div class="file-row" style="animation-delay:${i*.05}s">
+      <div class="file-icon" style="background:${colorFor(f.filename)}">${iconFor(f.filename)}</div>
+      <div>
+        <div class="file-name">${escHtml(f.filename)}</div>
+        <div class="file-meta">
+          <span class="badge-id">#${f.file_id}</span>
+          <span class="badge-size">${formatSize(f.file_size||0)}</span>
+          ${f.is_encrypted?'<span class="badge-enc">🔒 encrypted</span>':''}
+          <span style="color:var(--muted2)">${f.uploaded_at?new Date(f.uploaded_at).toLocaleDateString():''}</span>
+        </div>
+      </div>
+      <div style="color:var(--muted);font-size:12px;font-family:monospace;text-align:right">${f.uploaded_at?new Date(f.uploaded_at).toLocaleTimeString():''}</div>
+      <div class="file-actions">
+        ${canPreview(f.filename)?`<button class="btn-action btn-preview" onclick="previewFile(${f.file_id},'${escHtml(f.filename)}')">👁 Preview</button>`:''}
+        <button class="btn-action btn-dl" onclick="downloadFile(${f.file_id},'${escHtml(f.filename)}')">↓ Download</button>
+        <button class="btn-action btn-share" onclick="openShare(${f.file_id})">🔗 Share</button>
+        <button class="btn-action btn-del" onclick="deleteFile(${f.file_id},'${escHtml(f.filename)}')">✕</button>
+      </div>
+    </div>`).join('');
+}
+
+async function downloadFile(fileId,filename) {
+  try {
+    const res=await fetch(`${API}/download/${fileId}`,{headers:{'Authorization':`Bearer ${token}`}});
+    if(!res.ok){toast('Download failed','error');return;}
+    const blob=await res.blob(), url=URL.createObjectURL(blob), a=document.createElement('a');
+    a.href=url; a.download=filename; a.click(); URL.revokeObjectURL(url);
+    toast(`↓ Downloading ${filename}`,'success');
+  } catch(e){toast('Download failed','error');}
+}
+
+async function deleteFile(fileId,filename) {
+  if(!confirm(`Delete "${filename}"?`)) return;
+  try {
+    const res=await fetch(`${API}/files/${fileId}`,{method:'DELETE',headers:{'Authorization':`Bearer ${token}`}});
+    if(res.status===204||res.ok){toast(`Deleted ${filename}`,'success');loadFiles();}
+    else toast('Delete failed','error');
+  } catch(e){toast('Delete failed','error');}
+}
+
+// ── Preview ───────────────────────────────────
+async function previewFile(fileId, filename) {
+  document.getElementById('preview-title').textContent = filename;
+  document.getElementById('preview-body').innerHTML = '<div style="color:var(--muted)">Loading…</div>';
+  document.getElementById('preview-modal').classList.add('open');
+  try {
+    const res=await fetch(`${API}/download/${fileId}`,{headers:{'Authorization':`Bearer ${token}`}});
+    if(!res.ok){document.getElementById('preview-body').innerHTML='<div class="no-preview"><div class="icon">❌</div><div>Could not load file.</div></div>';return;}
+    const blob=await res.blob(), url=URL.createObjectURL(blob);
+    const ext=filename.split('.').pop().toLowerCase();
+    let html='';
+    if(['png','jpg','jpeg','gif','webp'].includes(ext)) html=`<img src="${url}" alt="${escHtml(filename)}"/>`;
+    else if(ext==='pdf') html=`<iframe src="${url}"></iframe>`;
+    else if(['txt','md'].includes(ext)) { const text=await blob.text(); html=`<pre style="white-space:pre-wrap;font-family:monospace;font-size:13px;color:var(--text);text-align:left;width:100%;max-height:60vh;overflow:auto">${escHtml(text)}</pre>`; }
+    else html=`<div class="no-preview"><div class="icon">📁</div><div>Preview not available for this file type.</div></div>`;
+    document.getElementById('preview-body').innerHTML=html;
+  } catch(e){document.getElementById('preview-body').innerHTML='<div class="no-preview"><div class="icon">❌</div><div>Failed to load preview.</div></div>';}
+}
+function closePreview() { document.getElementById('preview-modal').classList.remove('open'); document.getElementById('preview-body').innerHTML=''; }
+
+// ── Share ─────────────────────────────────────
+async function openShare(fileId) {
+  currentShareFileId=fileId;
+  document.getElementById('share-url-display').textContent='Generating link…';
+  document.getElementById('share-modal').classList.add('open');
+  try {
+    const res=await fetch(`${API}/files/${fileId}/share`,{method:'POST',headers:{'Authorization':`Bearer ${token}`}});
+    const data=await res.json();
+    document.getElementById('share-url-display').textContent=data.share_url;
+  } catch(e){document.getElementById('share-url-display').textContent='Failed to generate link';}
+}
+function closeShare() { document.getElementById('share-modal').classList.remove('open'); currentShareFileId=null; }
+function copyShareUrl() {
+  const url=document.getElementById('share-url-display').textContent;
+  navigator.clipboard.writeText(url).then(()=>toast('Link copied!','success')).catch(()=>toast('Could not copy','error'));
+}
+async function revokeShare() {
+  if(!currentShareFileId)return;
+  try {
+    await fetch(`${API}/files/${currentShareFileId}/share`,{method:'DELETE',headers:{'Authorization':`Bearer ${token}`}});
+    toast('Share link revoked','success'); closeShare(); loadFiles();
+  } catch(e){toast('Failed to revoke','error');}
+}
+
+// ── Toast ──────────────────────────────────────
+function toast(msg,type='success') {
+  const wrap=document.getElementById('toast-wrap'), el=document.createElement('div');
+  el.className=`toast toast-${type}`;
+  el.innerHTML=(type==='success'?'✓ ':'✕ ')+msg;
+  wrap.appendChild(el);
+  setTimeout(()=>{el.style.opacity='0';el.style.transition='opacity .4s';setTimeout(()=>el.remove(),400);},3000);
+}
+</script>
+</body>
+</html>
